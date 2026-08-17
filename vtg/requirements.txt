@@ -1,0 +1,16 @@
+httpx
+requests
+websocket-client
+colorama
+pystyle
+brotli
+imagehash
+Pillow
+numpy
+opencv-python-headless
+matplotlib
+pysocks
+selenium
+redis
+g4f
+pytweening

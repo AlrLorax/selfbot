@@ -1,0 +1,75 @@
+name: vtg
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - 'vtg/**'
+
+concurrency:
+  group: vtg
+  cancel-in-progress: true
+
+jobs:
+  run-vtg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: deps
+        run: |
+          pip install -U pip
+          pip install -r vtg/requirements.txt
+
+      - name: chrome + chromedriver (mesma versao Chrome-for-Testing)
+        run: |
+          # dependencias de sistema do Chrome (ubuntu-latest = 24.04)
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
+            libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 \
+            libxrandr2 libgbm1 libasound2t64 libpango-1.0-0 libcairo2 libatspi2.0-0 \
+            libu2f-udev >/dev/null 2>&1 || sudo apt-get install -y -qq libnss3 libnspr4 \
+            libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
+            libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2 libpango-1.0-0 libcairo2 \
+            libatspi2.0-0 libu2f-udev >/dev/null 2>&1
+          VR=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_STABLE)
+          echo "CFT version: $VR"
+          wget -q "https://storage.googleapis.com/chrome-for-testing-public/${VR}/linux64/chrome-linux64.zip"
+          wget -q "https://storage.googleapis.com/chrome-for-testing-public/${VR}/linux64/chromedriver-linux64.zip"
+          unzip -q chrome-linux64.zip
+          unzip -q chromedriver-linux64.zip
+          sudo mkdir -p /opt/cft-chrome
+          sudo mv chrome-linux64 /opt/cft-chrome/linux64
+          sudo mv chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
+          sudo ln -sf /opt/cft-chrome/linux64/chrome /usr/local/bin/google-chrome-stable
+          google-chrome-stable --version
+          chromedriver --version
+          /opt/cft-chrome/linux64/chrome --headless=new --no-sandbox --disable-dev-shm-usage --dump-dom about:blank 2>&1 | head -2 || echo "chrome smoke test FAILED"
+
+      - name: roda VTG com log no webhook
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          CHROMEDRIVER: /usr/local/bin/chromedriver
+          CHROME_BIN: /opt/cft-chrome/linux64/chrome
+          PYTHONUNBUFFERED: '1'
+        run: cd vtg && python -u runner.py
+
+      - name: upload tokens
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tokens
+          path: |
+            vtg/tkns.txt
+            vtg/locked.txt
+            vtg/unlocked.txt
+          retention-days: 7

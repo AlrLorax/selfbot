@@ -1,0 +1,4 @@
+.github/workflows/nukebot.yml
+nukebot/__pycache__/
+*.pyc
+__pycache__/

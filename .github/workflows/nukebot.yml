@@ -1,0 +1,30 @@
+name: nukebot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '25 */5 * * *'
+
+concurrency:
+  group: nukebot
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instala dependencias
+        run: |
+          pip install --quiet -r nukebot/requirements.txt
+
+      - name: Sobe o bot de raid (Jax Fanboy)
+        env:
+          DISCORD_TOKEN: ${{ secrets.NUKE_TOKEN }}
+        run: python nukebot/nuke_bot.py

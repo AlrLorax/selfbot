@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+alt_token.txt
+bot_token.txt
+self_token.txt
+nuke_bot_local.log

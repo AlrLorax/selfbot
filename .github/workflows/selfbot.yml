@@ -1,0 +1,47 @@
+name: selfbot
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - 'selfbot.py'
+      - 'requirements.txt'
+      - '.github/workflows/selfbot.yml'
+  schedule:
+    # reinicia a cada ~5h (limite de 6h por job no runner)
+    - cron: '15 */5 * * *'
+
+concurrency:
+  group: selfbot
+  cancel-in-progress: true
+
+jobs:
+  run-selfbot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: apt deps (opus / sodium / ffmpeg)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libopus0 libopus-dev libsodium23 libsodium-dev ffmpeg
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: pip deps
+        run: |
+          pip install -U pip
+          pip install -r requirements.txt
+
+      - name: run selfbot
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          PYTHONUNBUFFERED: '1'
+        run: python -u selfbot.py
